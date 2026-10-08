@@ -158,6 +158,7 @@
     undoStack.push({ label, items: rec.items });
     if (undoStack.length > 30) undoStack.shift();
     updateUndoBtn();
+    buzz(12);
     toast(label, kind || "success", { label: "↶ تراجع", fn: undo });
     return true;
   }
@@ -384,7 +385,8 @@
     };
     el.className = "sync-pill " + syncState;
     el.textContent = map[syncState] || "";
-    el.title = "اضغط للمزامنة الآن";
+    el.title = (map[syncState] || "") + " — اضغط للمزامنة الآن";
+    el.setAttribute("aria-label", map[syncState] || "المزامنة");
   }
   function updateBanner() {
     const el = document.getElementById("banner");
@@ -667,6 +669,7 @@
     const body = document.getElementById("modalBody");
     body.innerHTML = bodyHtml;
     m.hidden = false;
+    mobileizeTables(body);
     if (typeof onMount === "function") onMount(body);
   }
   function closeModal() {
@@ -712,6 +715,10 @@
 
   /* ---------- View dispatcher ---------- */
   function render() {
+    renderInner();
+    afterRender();
+  }
+  function renderInner() {
     const view = document.getElementById("view");
     renderPending = false;
     switch (currentView) {
@@ -742,7 +749,7 @@
       return { g, cnt, present, late, absent, sessions, rate };
     });
     return `
-      <div class="card card-pad-lg" style="margin-top:16px">
+      <div class="card card-pad-lg gs-card" style="margin-top:16px">
         <div class="page-head" style="margin-bottom:14px">
           <h2>إحصائية الحضور لكل مجموعة</h2>
           <span class="badge info">${monthName(t.m)} ${t.y}</span>
@@ -851,7 +858,7 @@
           `}
         </div>
 
-        <div class="card card-pad-lg">
+        <div class="card card-pad-lg qa-card">
           <div class="page-head" style="margin-bottom:14px">
             <h2>إجراءات سريعة</h2>
           </div>
@@ -1141,7 +1148,7 @@
     return `
       <div class="page-head">
         <h2 id="studentsCount">${studentsCountLabel(list)}</h2>
-        <div class="toolbar">
+        <div class="toolbar chips students-bar">
           <input class="input" id="studentSearch" placeholder="🔍 ابحث بالاسم أو الرقم..." value="${escapeHtml(sessionStorage.getItem('student_search') || '')}" style="min-width:220px" />
           <select class="select" id="groupFilter">
             <option value="">كل المجموعات</option>
@@ -1163,6 +1170,7 @@
     if (!c || !r) return;
     c.textContent = studentsCountLabel(list);
     r.innerHTML = studentsResults(list);
+    mobileizeTables(r);
     bindStudentRows();
   }
 
@@ -1349,7 +1357,7 @@
         </div>
       </div>
 
-      <div class="stat-grid">
+      <div class="stat-grid compact">
         <div class="stat-card success"><div class="stat-label">حاضر</div><div class="stat-value">${present}</div></div>
         <div class="stat-card accent"><div class="stat-label">متأخر</div><div class="stat-value">${late}</div></div>
         <div class="stat-card" style="--primary:#EF4444"><div class="stat-label">غائب</div><div class="stat-value">${absent}</div></div>
@@ -1373,6 +1381,7 @@
         ` : `
           <div class="att-bulk">
             <button class="btn btn-success" id="attAllPresent" ${unrecorded ? '' : 'disabled'}>✓ تحضير الكل حاضر${unrecorded ? ` (${unrecorded})` : ''}</button>
+            <span class="att-bulk-counts"><b class="c-present">${present}</b> حاضر · <b class="c-late">${late}</b> متأخر · <b class="c-absent">${absent}</b> غائب</span>
             <span class="att-bulk-hint">يسجّل "حاضر" لكل من لم يُسجَّل له شيء — وتقدر تعدّل الغائبين بعدها</span>
           </div>
           <div class="table-wrap" style="border:none">
@@ -1496,7 +1505,8 @@
     return `
       <div class="page-head">
         <h2>${monthName(m)} ${y}</h2>
-        <div class="toolbar">
+        <div class="toolbar chips">
+          ${(y !== t.y || m !== t.m) ? '<button class="btn btn-secondary btn-sm" id="payThisMonth">↩ الشهر الحالي</button>' : ''}
           <select class="select" id="payMonth">
             ${AR_MONTHS.map((mn, i) => `<option value="${i}" ${i === m ? 'selected' : ''}>${mn}</option>`).join("")}
           </select>
@@ -1581,6 +1591,8 @@
     const pg = document.getElementById("payGroupFilter");
     if (pg) pg.addEventListener("change", e => { sessionStorage.setItem("pay_filter_group", e.target.value); render(); });
 
+    const ptm = document.getElementById("payThisMonth");
+    if (ptm) ptm.addEventListener("click", () => { sessionStorage.removeItem("pay_m"); sessionStorage.removeItem("pay_y"); render(); });
     const ap = document.getElementById("addPay");
     if (ap) ap.addEventListener("click", () => openPaymentForm());
 
@@ -1685,7 +1697,7 @@
           ${locked ? `<input type="hidden" name="studentId" value="${preSelectedId}" />` : ''}
         </div>
         ${prevPaid > 0 ? `
-          <div style="background:var(--warning-100);color:#92400E;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px">
+          <div style="background:var(--warning-100);color:var(--warn-text,#92400E);padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px">
             <strong>ملاحظة:</strong> تم دفع ${fmtMoney(prevPaid)} سابقاً هذا الشهر. هتتسجل دفعة جديدة منفصلة بتاريخها.
           </div>
         ` : ''}
@@ -2486,7 +2498,7 @@ function openExamForm(id) {
     return `
       <div class="page-head">
         <h2>${monthName(m)} ${y}</h2>
-        <div class="toolbar">
+        <div class="toolbar chips">
           <select class="select" id="mrepMonth">
             ${AR_MONTHS.map((mn, i) => `<option value="${i}" ${i===m?'selected':''}>${mn}</option>`).join("")}
           </select>
@@ -2497,6 +2509,7 @@ function openExamForm(id) {
             <option value="">كل المجموعات</option>
             ${state.groups.map(g => `<option value="${g.id}" ${filterGroup===g.id?'selected':''}>${escapeHtml(g.name)}</option>`).join("")}
           </select>
+          ${(y !== t.y || m !== t.m) ? '<button class="btn btn-secondary" id="mrepThisMonth">↩ الشهر الحالي</button>' : ''}
           <button class="btn btn-secondary" id="mrepExcel">⬇ Excel</button>
           <button class="btn btn-secondary" id="mrepPdf">🖨 PDF</button>
         </div>
@@ -2594,6 +2607,8 @@ function openExamForm(id) {
       sessionStorage.setItem("focus_student", el.dataset.viewStudentMrep);
       navigate("student-detail");
     }));
+    const mtm = document.getElementById("mrepThisMonth");
+    if (mtm) mtm.addEventListener("click", () => { sessionStorage.removeItem("mrep_m"); sessionStorage.removeItem("mrep_y"); render(); });
     const exBtn = document.getElementById("mrepExcel");
     if (exBtn) exBtn.addEventListener("click", exportMonthlyExcel);
     const pdfBtn = document.getElementById("mrepPdf");
@@ -2759,6 +2774,14 @@ function openExamForm(id) {
           <p style="color:var(--text-soft); font-size:12px; margin:10px 0 0">لتثبيت التطبيق على iPhone: زرار المشاركة ← "إضافة إلى الشاشة الرئيسية". على أندرويد/كمبيوتر: زرار "تثبيت التطبيق" أعلى الصفحة أو قائمة المتصفح.</p>
         </div>
         <div class="detail-card" style="padding:14px">
+          <h3 style="margin-bottom:6px">🎨 المظهر</h3>
+          <select class="select" id="advTheme" style="width:100%">
+            <option value="auto" ${getThemePref() === "auto" ? "selected" : ""}>تلقائي (حسب الجهاز)</option>
+            <option value="light" ${getThemePref() === "light" ? "selected" : ""}>فاتح</option>
+            <option value="dark" ${getThemePref() === "dark" ? "selected" : ""}>داكن</option>
+          </select>
+        </div>
+        <div class="detail-card" style="padding:14px">
           <h3 style="margin-bottom:6px">⬇ تصدير البيانات</h3>
           <p style="color:var(--text-muted); font-size:13px; margin-bottom:10px">تنزيل نسخة احتياطية كاملة (JSON) من كل بياناتك.</p>
           <button class="btn btn-primary btn-sm" id="advExportBtn">⬇ تنزيل نسخة احتياطية</button>
@@ -2778,6 +2801,7 @@ function openExamForm(id) {
         <button type="button" class="btn btn-secondary" data-close>إغلاق</button>
       </div>
     `, (root) => {
+      root.querySelector("#advTheme").addEventListener("change", (e) => setThemePref(e.target.value));
       root.querySelector("#advSyncBtn").addEventListener("click", () => { syncNow(); toast("جاري المزامنة…", "info"); });
       const lg = root.querySelector("#advLegacyBtn");
       if (lg) lg.addEventListener("click", () => {
@@ -2828,8 +2852,147 @@ function openExamForm(id) {
   });
 
   /* ==========================================================
+     MOBILE UX: card tables, FAB, bottom sheets, haptics, theme
+     ========================================================== */
+  const isMobile = () => window.matchMedia("(max-width: 900px)").matches;
+  function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 12); } catch (e) { /* ignore */ } }
+
+  // يضيف عناوين الأعمدة لكل خلية (data-label) عشان الجدول يتحول لكروت على الموبايل
+  function mobileizeTables(root) {
+    if (!root) return;
+    root.querySelectorAll(".table-wrap table").forEach(tbl => {
+      const heads = [...tbl.querySelectorAll("thead th")].map(th => th.textContent.trim());
+      tbl.querySelectorAll("tbody tr").forEach(tr => {
+        [...tr.children].forEach((td, i) => {
+          if (td.dataset.mz) return;
+          td.dataset.mz = "1";
+          if (i === 0) { td.classList.add("td-title"); return; }
+          if (td.querySelector(".table-actions") || (td.querySelector("button") && !heads[i])) { td.classList.add("td-actions"); return; }
+          if (!td.textContent.trim() && !td.children.length) { td.classList.add("td-empty"); return; }
+          if (heads[i]) td.dataset.label = heads[i];
+        });
+      });
+    });
+  }
+
+  function openQuickSheet() {
+    openModal("إضافة سريعة", `
+      <div class="quick-sheet">
+        <button class="btn btn-primary" data-q="attendance">✓ تسجيل حضور اليوم</button>
+        <button class="btn btn-secondary" data-q="payment">$ تحصيل دفعة من طالب</button>
+        <button class="btn btn-secondary" data-q="student">♛ إضافة طالب جديد</button>
+        <button class="btn btn-secondary" data-q="group">▦ إنشاء مجموعة جديدة</button>
+        <button class="btn btn-secondary" data-q="exam">★ إضافة امتحان جديد</button>
+      </div>`, (root) => {
+      root.querySelectorAll("[data-q]").forEach(b => b.addEventListener("click", () => {
+        const q = b.dataset.q;
+        closeModal();
+        if (q === "attendance") navigate("attendance");
+        else if (q === "payment") { navigate("payments"); openPaymentForm(); }
+        else if (q === "student") { navigate("students"); openStudentForm(null); }
+        else if (q === "group") { navigate("groups"); openGroupForm(); }
+        else if (q === "exam") { navigate("exams"); if (state.groups.length) openExamForm(); else toast("أنشئ مجموعة أولاً", "danger"); }
+      }));
+    });
+  }
+
+  // الزرار العائم (+) — بيتغير حسب الصفحة
+  function updateFab() {
+    const fab = document.getElementById("fab");
+    if (!fab) return;
+    const actions = {
+      dashboard: { ico: "+", label: "إضافة سريعة", fn: openQuickSheet },
+      groups: { ico: "+", label: "مجموعة جديدة", fn: () => openGroupForm() },
+      students: { ico: "+", label: "طالب جديد", fn: () => {
+        const f = sessionStorage.getItem("filter_group") || "";
+        openStudentForm(null, f === "none" ? null : (f || undefined));
+      } },
+      attendance: { ico: "✓", label: "تحضير الكل حاضر", fn: () => {
+        const b = document.getElementById("attAllPresent");
+        if (b && !b.disabled) b.click(); else toast("كل الطلاب مسجَّل لهم حضور بالفعل", "info");
+      } },
+      payments: { ico: "+", label: "تسجيل دفعة", fn: () => openPaymentForm() },
+      exams: { ico: "+", label: "امتحان جديد", fn: () => { if (state.groups.length) openExamForm(); else toast("أنشئ مجموعة أولاً", "danger"); } },
+      "student-detail": { ico: "✎", label: "تعديل الطالب", fn: () => openStudentForm(sessionStorage.getItem("focus_student")) }
+    };
+    const a = actions[currentView];
+    fab.hidden = !a;
+    if (a) {
+      fab.textContent = a.ico;
+      fab.setAttribute("aria-label", a.label);
+      fab.title = a.label;
+      fab.onclick = a.fn;
+    }
+  }
+
+  function afterRender() {
+    const view = document.getElementById("view");
+    view.dataset.view = currentView;
+    mobileizeTables(view);
+    updateFab();
+  }
+
+  // Bottom sheet: سحب للأسفل للإغلاق + مراعاة الكيبورد
+  (function setupSheet() {
+    const card = document.querySelector("#modal .modal-card");
+    const head = card.querySelector(".modal-head");
+    let sy = null, dy = 0;
+    head.addEventListener("touchstart", (e) => {
+      if (window.innerWidth > 700) return;
+      sy = e.touches[0].clientY; dy = 0; card.style.transition = "none";
+    }, { passive: true });
+    head.addEventListener("touchmove", (e) => {
+      if (sy == null) return;
+      dy = Math.max(0, e.touches[0].clientY - sy);
+      card.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+    head.addEventListener("touchend", () => {
+      if (sy == null) return;
+      card.style.transition = "";
+      card.style.transform = "";
+      const close = dy > 90;
+      sy = null; dy = 0;
+      if (close) closeModal();
+    });
+    const vv = window.visualViewport;
+    if (vv) {
+      const upd = () => {
+        const r = document.documentElement.style;
+        r.setProperty("--vvh", vv.height + "px");
+        r.setProperty("--vvtop", vv.offsetTop + "px");
+      };
+      vv.addEventListener("resize", upd);
+      vv.addEventListener("scroll", upd);
+      upd();
+    }
+    document.addEventListener("focusin", (e) => {
+      if (window.innerWidth <= 700 && e.target.closest && e.target.closest("#modal") && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) {
+        setTimeout(() => { try { e.target.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (x) { /* ignore */ } }, 320);
+      }
+    });
+  })();
+
+  /* ---------- Theme (تلقائي / فاتح / داكن) ---------- */
+  function getThemePref() { try { return localStorage.getItem("tgm_theme") || "auto"; } catch (e) { return "auto"; } }
+  function applyTheme() {
+    const pref = getThemePref();
+    const dark = pref === "dark" || (pref === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    if (window.Chart) {
+      Chart.defaults.color = dark ? "#9DB0CA" : "#666666";
+      Chart.defaults.borderColor = dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
+    }
+  }
+  function setThemePref(v) {
+    try { localStorage.setItem("tgm_theme", v); } catch (e) { /* ignore */ }
+    applyTheme();
+  }
+  if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+
+  /* ==========================================================
      INIT
      ========================================================== */
+  applyTheme();
   document.getElementById("todayLabel").textContent = todayLabel();
   updateUndoBtn();
   updateSyncUI();

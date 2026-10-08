@@ -756,3 +756,207 @@ tbody tr:hover { background: var(--surface-2); }
   .sidebar, .topbar, .toast { display: none !important; }
   .modal-card.wide { width: 100%; }
 }
+
+
+/* =====================================================================
+   v3 — تحسينات الموبايل (كروت بدل الجداول، زرار عائم، شيت سفلي، داكن)
+   ===================================================================== */
+@keyframes pulse { 50% { opacity: .35; } }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+
+.nav-ico svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fab { display: none; }
+.quick-sheet { display: grid; gap: 10px; }
+.quick-sheet .btn { justify-content: flex-start; min-height: 48px; font-size: 15px; }
+
+/* الحضور: ألوان صلبة وواضحة */
+.opt-btn.present { border-color: #A7F3D0; }
+.opt-btn.absent  { border-color: #FECACA; }
+.opt-btn.late    { border-color: #FDE68A; }
+.opt-btn.on.present { background: var(--success); color: #fff; border-color: var(--success); }
+.opt-btn.on.absent  { background: var(--danger);  color: #fff; border-color: var(--danger); }
+.opt-btn.on.late    { background: var(--warning); color: #451A03; border-color: var(--warning); }
+.att-bulk-counts { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+.att-bulk-counts b { font-size: 15px; }
+.c-present { color: var(--success); } .c-late { color: #B45309; } .c-absent { color: var(--danger); }
+.stat-grid.compact { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.stat-grid.compact .stat-card { padding: 10px 12px; }
+.stat-grid.compact .stat-label { font-size: 12px; }
+.stat-grid.compact .stat-value { font-size: 22px; margin-top: 0; }
+.stat-grid.compact .stat-foot { display: none; }
+
+@media (max-width: 900px) {
+  /* الزرار العائم بدل أزرار "إضافة" أعلى الصفحة */
+  .fab {
+    display: grid; place-items: center;
+    position: fixed; left: 16px; bottom: calc(74px + env(safe-area-inset-bottom));
+    width: 56px; height: 56px; border-radius: 50%; border: none;
+    background: var(--accent); color: #fff; font-size: 28px; line-height: 1; font-family: inherit;
+    box-shadow: 0 8px 22px rgba(245, 158, 11, .45); z-index: 55; cursor: pointer;
+  }
+  .fab:active { transform: scale(.93); }
+  #addGroup, #addStudent, #addPay, #addExam { display: none; }
+
+  /* iOS ما يعملش zoom عند التركيز على حقل */
+  input, select, textarea { font-size: 16px !important; }
+  .btn, .opt-btn, .select, .input { min-height: 44px; }
+  .btn-sm { min-height: 40px; }
+
+  /* شريط علوي ثابت ومضغوط */
+  .main { padding: 0 14px calc(156px + env(safe-area-inset-bottom)); }
+  .topbar {
+    position: sticky; top: 0; z-index: 40;
+    margin: 0 -14px 12px; padding: 8px 14px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    flex-wrap: nowrap; align-items: center; gap: 8px;
+  }
+  .topbar h1 { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .page-sub { display: none; }
+  .topbar-actions { flex-wrap: nowrap; gap: 6px; flex-shrink: 0; }
+  .undo-btn .lbl, #installBtn .lbl { display: none; }
+  .undo-btn, #installBtn { width: 40px; padding: 0; justify-content: center; font-size: 18px; }
+  .sync-pill {
+    font-size: 0; width: 40px; height: 40px; padding: 0; border-radius: 50%;
+    display: grid; place-items: center;
+  }
+  .sync-pill::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: currentColor; }
+  .sync-pill.syncing::before { animation: pulse 1s infinite; }
+  .icon-btn.mobile-only { width: 40px; height: 40px; font-size: 20px; }
+
+  /* الرئيسية: مجموعات اليوم أولاً ثم الأرقام */
+  #view[data-view="dashboard"] { display: flex; flex-direction: column; }
+  #view[data-view="dashboard"] .dash-grid { order: 1; margin-bottom: 12px; }
+  #view[data-view="dashboard"] .stat-grid { order: 2; }
+  #view[data-view="dashboard"] .gs-card { order: 3; margin-top: 0 !important; }
+  .qa-card { display: none; }
+  .dash-grid { gap: 12px; }
+
+  /* الإحصائيات أصغر */
+  .stat-grid { gap: 8px; margin-bottom: 12px; }
+  .stat-card { padding: 10px 12px; }
+  .stat-label { font-size: 12px; }
+  .stat-value { font-size: 20px; margin-top: 2px; }
+  .stat-foot { font-size: 11px; margin-top: 2px; }
+  .stat-grid.compact { gap: 6px; }
+  .stat-grid.compact .stat-card { padding: 8px 8px; }
+  .stat-grid.compact .stat-value { font-size: 20px; }
+  .stat-grid.compact .stat-label { font-size: 11px; }
+  .report-modal-body .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* الحضور: سطر لكل طالب + 3 أزرار كبيرة */
+  .att-head { display: none; }
+  .att-bulk {
+    position: sticky; top: 56px; z-index: 30; background: var(--surface);
+    margin: -4px -4px 8px; padding: 10px 4px; border-bottom: 1px solid var(--border);
+  }
+  .att-bulk .btn { min-height: 44px; }
+  .att-bulk-hint { display: none; }
+  .att-row { flex-wrap: wrap; gap: 8px; padding: 12px 4px; }
+  .att-row .who { flex: 1 1 100%; font-size: 16px; }
+  .att-row .opts { flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .att-row .opts .opt-btn { min-height: 46px; font-size: 15px; border-radius: 12px; }
+  .att-row .opts .btn-whatsapp { grid-column: 1 / -1; justify-content: center; }
+  .grade-input { width: 100% !important; }
+
+  /* تفاصيل الطالب */
+  .detail-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .detail-card { padding: 10px; }
+  .detail-card h3 { font-size: 12px; margin-bottom: 4px; }
+  .detail-card .value { font-size: 17px; }
+  .detail-card .sub { font-size: 10.5px; }
+  .student-avatar { width: 56px; height: 56px; font-size: 22px; }
+  .student-info h2 { font-size: 18px; }
+  .student-profile .toolbar .btn { flex: 1; justify-content: center; }
+}
+
+/* ---- جداول → كروت ---- */
+@media (max-width: 700px) {
+  .table-wrap { border: none; background: transparent; box-shadow: none; overflow: visible; border-radius: 0; }
+  .table-wrap table, .table-wrap tbody, .table-wrap tr, .table-wrap td { display: block; width: 100%; }
+  .table-wrap thead { display: none; }
+  .table-wrap tbody tr {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 10px 14px; margin-bottom: 10px; box-shadow: var(--shadow-sm);
+  }
+  .table-wrap tbody tr:hover { background: var(--surface); }
+  .table-wrap tbody td {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 6px 0; border: none; text-align: right; min-height: 30px;
+  }
+  .table-wrap tbody td[data-label]::before {
+    content: attr(data-label); color: var(--text-muted); font-size: 12px; font-weight: 600; flex-shrink: 0;
+  }
+  .table-wrap tbody td.td-title { font-size: 16px; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px dashed var(--border); }
+  .table-wrap tbody td.td-actions { padding-top: 10px; margin-top: 6px; border-top: 1px dashed var(--border); }
+  .table-wrap tbody td.td-actions .table-actions { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
+  .table-wrap .table-actions .btn { justify-content: center; min-height: 44px; }
+  .table-wrap tbody td.td-empty { display: none; }
+  .table-wrap .badge { white-space: normal; text-align: center; }
+  .table-wrap .schedule-list { justify-content: flex-end; }
+
+  /* فلاتر على شكل شرائط تتسحب أفقيًا */
+  .toolbar.chips {
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+    margin: 0 -14px; padding: 2px 14px 4px; width: calc(100% + 28px);
+  }
+  .toolbar.chips::-webkit-scrollbar { display: none; }
+  .toolbar.chips .select, .toolbar.chips .btn { flex: 0 0 auto; border-radius: 999px; width: auto; min-width: 0 !important; }
+  .toolbar.chips .select { padding: 8px 14px; }
+  .toolbar.students-bar .input { flex: 1 1 130px; border-radius: 999px; }
+  .toolbar.students-bar .select { flex: 0 0 auto; min-width: 150px !important; }
+
+  /* نوافذ تظهر من تحت (Bottom sheet) */
+  .modal { inset: auto; top: var(--vvtop, 0px); left: 0; right: 0; height: var(--vvh, 100%); place-items: end center; }
+  .modal-card {
+    width: 100% !important; max-height: calc(100% - 12px);
+    border-radius: 22px 22px 0 0; animation: sheetUp .24s ease-out;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .modal-head { position: relative; padding: 20px 18px 12px; touch-action: none; }
+  .modal-head::before {
+    content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 42px; height: 4px; border-radius: 4px; background: var(--border-strong);
+  }
+  .modal-body { padding: 14px 18px 18px; -webkit-overflow-scrolling: touch; }
+  .modal-foot {
+    position: sticky; bottom: -18px; background: var(--surface); z-index: 2;
+    padding: 12px 0 4px; margin: 6px 0 -4px;
+  }
+  .modal-foot .btn { flex: 1; justify-content: center; min-height: 46px; }
+  .pay-summary strong { font-size: 14px; }
+}
+
+/* ---- الوضع الداكن ---- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B1220; --surface: #121C2F; --surface-2: #18243A;
+  --border: #25344D; --border-strong: #34476A;
+  --text: #E8EEF8; --text-muted: #9DB0CA; --text-soft: #7A8DAA;
+  --primary: #0E8F83; --primary-600: #0B7A70; --primary-100: #0F3B38;
+  --accent-100: #40300F; --success-100: #0E3A2D; --danger-100: #46191C;
+  --warning-100: #42300F; --info-100: #13294E;
+  --warn-text: #FCD34D;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4); --shadow: 0 6px 24px rgba(0,0,0,.4); --shadow-lg: 0 18px 48px rgba(0,0,0,.6);
+}
+:root[data-theme="dark"] .badge.primary { color: #5EEAD4; }
+:root[data-theme="dark"] .badge.success { color: #6EE7B7; }
+:root[data-theme="dark"] .badge.danger  { color: #FCA5A5; }
+:root[data-theme="dark"] .badge.warning { color: #FCD34D; }
+:root[data-theme="dark"] .badge.info, :root[data-theme="dark"] .schedule-list .badge { color: #93C5FD; }
+:root[data-theme="dark"] .sync-pill.ok { color: #6EE7B7; border-color: #14532D; }
+:root[data-theme="dark"] .sync-pill.syncing { color: #93C5FD; border-color: #1E3A8A; }
+:root[data-theme="dark"] .sync-pill.offline { color: #FCD34D; border-color: #78350F; }
+:root[data-theme="dark"] .sync-pill.setup { color: #FCA5A5; border-color: #7F1D1D; }
+:root[data-theme="dark"] .banner.danger { color: #FECACA; border-color: #7F1D1D; }
+:root[data-theme="dark"] .banner code { background: rgba(0,0,0,.35); }
+:root[data-theme="dark"] .toast { background: #2A3A57; }
+:root[data-theme="dark"] .toast.success { background: #0E8F5F; }
+:root[data-theme="dark"] .toast.danger { background: #B3303A; }
+:root[data-theme="dark"] .opt-btn.present { border-color: #14532D; }
+:root[data-theme="dark"] .opt-btn.absent  { border-color: #7F1D1D; }
+:root[data-theme="dark"] .opt-btn.late    { border-color: #78350F; }
+:root[data-theme="dark"] .c-late { color: #FCD34D; }
+:root[data-theme="dark"] .btn-danger-ghost { color: #FECACA; }
+:root[data-theme="dark"] .wd.on { color: #fff; }
+:root[data-theme="dark"] .modal-backdrop { background: rgba(0,0,0,.6); }
+:root[data-theme="dark"] .preset:hover { color: #5EEAD4; }

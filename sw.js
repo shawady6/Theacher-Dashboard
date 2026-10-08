@@ -2,7 +2,7 @@
    - ملفات التطبيق: الشبكة أولاً (عشان التحديثات توصل فورًا) ثم الكاش لو أوفلاين.
    - المكتبات والخطوط من CDN: الكاش أولاً.
    - طلبات Supabase: لا تمر على الكاش أبدًا (المزامنة تتولاها app.js). */
-const VERSION = "v2.0.0";
+const VERSION = "v2.1.0";
 const CORE = `tgm-core-${VERSION}`;
 const RUNTIME = `tgm-rt-${VERSION}`;
 
