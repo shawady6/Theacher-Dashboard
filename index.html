@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0F766E" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="المجموعات" />
+  <title>إدارة المجموعات الدراسية</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar (شريط جانبي على الكمبيوتر / شريط سفلي على الموبايل) -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">ت</div>
+        <div class="brand-text">
+          <div class="brand-title">إدارة المجموعات</div>
+          <div class="brand-sub">لوحة المعلم</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="nav-item" data-view="dashboard"><span class="nav-ico">⌂</span><span>الرئيسية</span></a>
+        <a class="nav-item" data-view="groups"><span class="nav-ico">▦</span><span>المجموعات</span></a>
+        <a class="nav-item" data-view="students"><span class="nav-ico">♛</span><span>الطلاب</span></a>
+        <a class="nav-item" data-view="attendance"><span class="nav-ico">✓</span><span>الحضور</span></a>
+        <a class="nav-item" data-view="payments"><span class="nav-ico">$</span><span>المدفوعات</span></a>
+        <a class="nav-item" data-view="exams"><span class="nav-ico">★</span><span>الامتحانات</span></a>
+        <a class="nav-item" data-view="monthly"><span class="nav-ico">⚠</span><span>التقرير</span></a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <input type="file" id="importFile" accept="application/json" hidden />
+        <button id="advancedSettingsBtn" class="btn btn-ghost btn-sm" title="المزامنة والنسخ الاحتياطي والاستيراد ومسح البيانات">
+          <span>⚙</span> إعدادات متقدمة
+        </button>
+        <div class="version">الإصدار 2.0</div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">الرئيسية</h1>
+          <div id="pageSub" class="page-sub">نظرة عامة على مجموعاتك</div>
+        </div>
+        <div class="topbar-actions">
+          <button id="installBtn" class="btn btn-secondary btn-sm" hidden>⬇ تثبيت التطبيق</button>
+          <button id="undoBtn" class="btn btn-secondary btn-sm undo-btn" disabled title="تراجع">↶ تراجع</button>
+          <button id="syncPill" class="sync-pill offline" type="button">⚠ غير متصل</button>
+          <button id="mobileSettings" class="icon-btn mobile-only" aria-label="الإعدادات">⚙</button>
+          <div class="today-pill">
+            <span class="dot"></span>
+            <span id="todayLabel">—</span>
+          </div>
+        </div>
+      </header>
+
+      <div id="banner"></div>
+      <section id="view" class="view"></section>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3 id="modalTitle">—</h3>
+        <button class="icon-btn" data-close aria-label="إغلاق">✕</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" hidden></div>
+
+  <noscript><p style="padding:20px">يلزم تفعيل JavaScript لتشغيل التطبيق.</p></noscript>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
