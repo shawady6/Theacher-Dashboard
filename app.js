@@ -688,8 +688,8 @@
   /* ---------- Router ---------- */
   const titles = {
     dashboard:      { title: "الرئيسية",            sub: "نظرة عامة على مجموعاتك وطلابك" },
-    groups:         { title: "المجموعات",           sub: "إدارة مجموعات التقوية والمواعيد" },
-    students:       { title: "الطلاب",              sub: "قائمة جميع الطلاب وتوزيعهم على المجموعات" },
+    groups:         { title: "المجموعات",           sub: "المجموعات وطلابها في مكان واحد" },
+    more:           { title: "المزيد",              sub: "الامتحانات والتقرير الشهري والإعدادات" },
     "student-detail": { title: "ملف الطالب",        sub: "تفاصيل الطالب الكاملة" },
     attendance:     { title: "الحضور والانصراف",    sub: "تسجيل حضور الطلاب يومياً" },
     payments:       { title: "المدفوعات",           sub: "تتبع المصروفات والمستحقات الشهرية" },
@@ -699,10 +699,14 @@
 
   let currentView = "dashboard";
 
+  const MORE_VIEWS = ["more", "exams", "monthly"];
   function navigate(view) {
+    if (view === "students") view = "groups";   // الطلاب اتدمجوا في صفحة المجموعات
     currentView = view;
+    const act = view === "student-detail" ? "groups" : view;
     document.querySelectorAll(".nav-item").forEach(el => {
-      el.classList.toggle("active", el.dataset.view === view);
+      const v = el.dataset.view;
+      el.classList.toggle("active", v === act || (v === "more" && MORE_VIEWS.includes(view)));
     });
     const t = titles[view] || titles.dashboard;
     document.getElementById("pageTitle").textContent = t.title;
@@ -723,7 +727,7 @@
     renderPending = false;
     switch (currentView) {
       case "groups":         return view.innerHTML = renderGroups(), bindGroups();
-      case "students":       return view.innerHTML = renderStudents(), bindStudents();
+      case "more":           return view.innerHTML = renderMore(), bindMore();
       case "student-detail": return view.innerHTML = renderStudentDetail(), bindStudentDetail();
       case "attendance":     return view.innerHTML = renderAttendance(), bindAttendance();
       case "payments":       return view.innerHTML = renderPayments(), bindPayments();
@@ -867,7 +871,7 @@
             <button class="btn btn-secondary" data-go="payments">+ تحصيل دفعة من طالب</button>
             <button class="btn btn-secondary" data-go="exams">+ إضافة امتحان جديد</button>
             <button class="btn btn-secondary" data-go="groups">+ إنشاء مجموعة جديدة</button>
-            <button class="btn btn-secondary" data-go="students">+ إضافة طالب جديد</button>
+            <button class="btn btn-secondary" data-go="groups">+ إضافة طالب جديد</button>
           </div>
         </div>
       </div>
@@ -886,88 +890,6 @@
   /* ==========================================================
      GROUPS
      ========================================================== */
-  function renderGroups() {
-    if (state.groups.length === 0) {
-      return `
-        <div class="page-head">
-          <h2>${state.groups.length} مجموعة</h2>
-          <button class="btn btn-primary" id="addGroup">+ مجموعة جديدة</button>
-        </div>
-        <div class="card empty">
-          <div class="empty-ico">▦</div>
-          <div class="empty-title">لا توجد مجموعات بعد</div>
-          <div class="empty-sub">ابدأ بإنشاء مجموعتك الأولى وحدد المواعيد والمبلغ الشهري</div>
-          <div style="margin-top:14px"><button class="btn btn-primary" id="addGroupEmpty">+ إنشاء أول مجموعة</button></div>
-        </div>
-      `;
-    }
-
-    return `
-      <div class="page-head">
-        <h2>${state.groups.length} مجموعة</h2>
-        <button class="btn btn-primary" id="addGroup">+ مجموعة جديدة</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>اسم المجموعة</th>
-              <th>المواعيد</th>
-              <th>الطلاب</th>
-              <th>المبلغ الشهري</th>
-              <th>ملاحظات</th>
-              <th style="text-align:left">إجراءات</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${state.groups.map(g => {
-              const cnt = state.students.filter(s => s.groupId === g.id).length;
-              return `
-                <tr>
-                  <td><strong>${escapeHtml(g.name)}</strong></td>
-                  <td><div class="schedule-list">${(g.schedule||[]).slice().sort((a,b)=>a-b).map(d => dayBadge(d, g.scheduleTimes)).join(" ")}</div></td>
-                  <td><span class="badge primary">${cnt} طالب</span></td>
-                  <td><strong>${fmtMoney(g.monthlyFee)}</strong></td>
-                  <td>${escapeHtml(g.notes) || '<span style="color:var(--text-soft)">—</span>'}</td>
-                  <td>
-                    <div class="table-actions">
-                      <button class="btn btn-secondary btn-sm" data-edit-group="${g.id}">تعديل</button>
-                      <button class="btn btn-danger btn-sm" data-del-group="${g.id}">حذف</button>
-                    </div>
-                  </td>
-                </tr>
-              `;
-            }).join("")}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-  function bindGroups() {
-    ["addGroup", "addGroupEmpty"].forEach(id => { const b = document.getElementById(id); if (b) b.addEventListener("click", () => openGroupForm()); });
-    document.querySelectorAll("[data-edit-group]").forEach(el => el.addEventListener("click", () => openGroupForm(el.dataset.editGroup)));
-    document.querySelectorAll("[data-del-group]").forEach(el => el.addEventListener("click", () => {
-      const id = el.dataset.delGroup;
-      const g = state.groups.find(x => x.id === id);
-      const cnt = state.students.filter(s => s.groupId === id).length;
-      const examCnt = state.exams.filter(e => e.groupId === id).length;
-      let msg = `حذف "${g.name}"؟`;
-      if (cnt > 0) msg += ` يحتوي على ${cnt} طالب. سيتم إبقاؤهم بدون مجموعة.`;
-      if (examCnt > 0) msg += ` سيتم حذف ${examCnt} امتحان مرتبط بهذه المجموعة وكل الدرجات المسجلة فيها.`;
-      if (!confirm(msg)) return;
-      tx("تم حذف المجموعة", () => {
-        // الطلاب يفضلوا بدون مجموعة، وسجلات الحضور/المدفوعات تفضل محفوظة
-        state.students.filter(s => s.groupId === id).forEach(s => put("students", { ...s, groupId: null }));
-        state.attendance.filter(a => a.groupId === id).forEach(a => put("attendance", { ...a, groupId: null }));
-        state.payments.filter(p => p.groupId === id).forEach(p => put("payments", { ...p, groupId: null }));
-        const examIds = state.exams.filter(e => e.groupId === id).map(e => e.id);
-        state.grades.filter(gr => examIds.includes(gr.examId)).forEach(gr => del("grades", gr.id));
-        examIds.forEach(eid => del("exams", eid));
-        del("groups", id);
-      });
-      render();
-    }));
-  }
 
   function openGroupForm(id) {
     const isEdit = !!id;
@@ -1088,91 +1010,9 @@
   function studentsCountLabel(list) {
     return `${list.length} طالب${list.length !== state.students.length ? ` (من ${state.students.length})` : ""}`;
   }
-  function studentsResults(list) {
-    if (list.length === 0) {
-      return `
-        <div class="card empty">
-          <div class="empty-ico">♛</div>
-          <div class="empty-title">${state.students.length === 0 ? "لا يوجد طلاب بعد" : "لا توجد نتائج"}</div>
-          <div class="empty-sub">${state.students.length === 0 ? "ابدأ بإضافة طلابك وتعيينهم لمجموعاتهم" : "جرّب تغيير البحث أو الفلتر"}</div>
-        </div>`;
-    }
-    const t = todayParts();
-    return `
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>الاسم</th>
-              <th>المجموعة</th>
-              <th>رقم الطالب</th>
-              <th>اسم ولي الأمر</th>
-              <th>الحالة المالية (هذا الشهر)</th>
-              <th style="text-align:left">إجراءات</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${list.map(s => {
-              const g = state.groups.find(x => x.id === s.groupId);
-              const due = g ? getStudentDue(s, g) : 0;
-              const paid = paidTotal(s.id, t.y, t.m);
-              let fin;
-              if (!g) fin = '<span style="color:var(--text-soft)">—</span>';
-              else if (due === 0 && paid === 0) fin = '<span class="badge success">إعفاء كامل</span>';
-              else if (paid >= due) fin = `<span class="badge success">سدد ${fmtMoney(paid)}</span>`;
-              else if (paid > 0) fin = `<span class="badge warning">جزئي ${fmtMoney(paid)} من ${fmtMoney(due)}</span>`;
-              else fin = `<span class="badge warning">يستحق ${fmtMoney(due)}</span>`;
-              return `
-                <tr>
-                  <td><strong>${escapeHtml(s.name)}</strong></td>
-                  <td>${g ? `<span class="badge primary">${escapeHtml(g.name)}</span>` : '<span class="badge">بدون مجموعة</span>'}</td>
-                  <td>${escapeHtml(s.phone) || '<span style="color:var(--text-soft)">—</span>'}</td>
-                  <td>${escapeHtml(s.parentName) || '<span style="color:var(--text-soft)">—</span>'}</td>
-                  <td>${fin}</td>
-                  <td>
-                    <div class="table-actions">
-                      <button class="btn btn-primary btn-sm" data-view-student="${s.id}">عرض التفاصيل</button>
-                      <button class="btn btn-secondary btn-sm" data-edit-student="${s.id}">تعديل</button>
-                      <button class="btn btn-danger btn-sm" data-del-student="${s.id}">حذف</button>
-                    </div>
-                  </td>
-                </tr>`;
-            }).join("")}
-          </tbody>
-        </table>
-      </div>`;
-  }
 
-  function renderStudents() {
-    const { list, filterGroup } = filteredStudents();
-    return `
-      <div class="page-head">
-        <h2 id="studentsCount">${studentsCountLabel(list)}</h2>
-        <div class="toolbar chips students-bar">
-          <input class="input" id="studentSearch" placeholder="🔍 ابحث بالاسم أو الرقم..." value="${escapeHtml(sessionStorage.getItem('student_search') || '')}" style="min-width:220px" />
-          <select class="select" id="groupFilter">
-            <option value="">كل المجموعات</option>
-            ${state.groups.map(g => `<option value="${g.id}" ${filterGroup === g.id ? 'selected' : ''}>${escapeHtml(g.name)}</option>`).join("")}
-            <option value="none" ${filterGroup === 'none' ? 'selected' : ''}>بدون مجموعة</option>
-          </select>
-          <button class="btn btn-primary" id="addStudent">+ طالب جديد</button>
-        </div>
-      </div>
-      <div id="studentsResults">${studentsResults(list)}</div>
-    `;
-  }
 
   // تحديث النتائج فقط (بدون إعادة رسم الصفحة) عشان مربع البحث ما يفقدش التركيز
-  function updateStudentsResults() {
-    const { list } = filteredStudents();
-    const c = document.getElementById("studentsCount");
-    const r = document.getElementById("studentsResults");
-    if (!c || !r) return;
-    c.textContent = studentsCountLabel(list);
-    r.innerHTML = studentsResults(list);
-    mobileizeTables(r);
-    bindStudentRows();
-  }
 
   function bindStudentRows() {
     document.querySelectorAll("[data-view-student]").forEach(el => el.addEventListener("click", () => {
@@ -1195,15 +1035,198 @@
     }));
   }
 
-  function bindStudents() {
-    const addBtn = document.getElementById("addStudent");
-    if (addBtn) addBtn.addEventListener("click", () => {
-      const filterGroup = sessionStorage.getItem("filter_group") || "";
-      let preset = undefined;
-      if (filterGroup === "none") preset = null;
-      else if (filterGroup) preset = filterGroup;
-      openStudentForm(null, preset);
+  function gpDays(g) {
+    return (g.schedule || []).slice().sort((a, b) => a - b).map(d => dayBadge(d, g.scheduleTimes)).join(" ");
+  }
+
+  function gpChips(filterGroup) {
+    const none = state.students.filter(s => !s.groupId).length;
+    const chip = (key, label, cnt, sub) =>
+      `<button type="button" class="gp-chip ${filterGroup === key ? "on" : ""}" data-gp="${key}">` +
+      `<span class="gp-chip-name">${label}</span><span class="gp-chip-cnt">${cnt}</span>` +
+      (sub ? `<span class="gp-chip-sub">${sub}</span>` : "") + `</button>`;
+    return `
+      <div class="gp-chips" id="gpChips">
+        ${chip("", "الكل", state.students.length, "كل الطلاب")}
+        ${state.groups.map(g => chip(g.id, escapeHtml(g.name), state.students.filter(s => s.groupId === g.id).length, fmtMoney(g.monthlyFee) + " / شهر")).join("")}
+        ${none || filterGroup === "none" ? chip("none", "بدون مجموعة", none, "") : ""}
+        <button type="button" class="gp-chip gp-add" id="addGroupChip">＋ مجموعة</button>
+      </div>`;
+  }
+
+  function gpGroupCard(g) {
+    const cnt = state.students.filter(s => s.groupId === g.id).length;
+    return `
+      <div class="card gp-card">
+        <div class="gp-card-top">
+          <div class="gp-card-info">
+            <div class="gp-card-name">${escapeHtml(g.name)}</div>
+            <div class="schedule-list">${gpDays(g)}</div>
+          </div>
+          <div class="gp-card-actions">
+            <button class="btn btn-secondary btn-sm" data-edit-group="${g.id}">تعديل</button>
+            <button class="btn btn-danger btn-sm" data-del-group="${g.id}">حذف</button>
+          </div>
+        </div>
+        <div class="gp-card-meta">
+          <span class="badge primary">${cnt} طالب</span>
+          <span class="badge info">${fmtMoney(g.monthlyFee)} / شهر</span>
+          ${g.notes ? `<span class="gp-note">${escapeHtml(g.notes)}</span>` : ""}
+        </div>
+      </div>`;
+  }
+
+  function studentsTable(list, showGroup) {
+    const t = todayParts();
+    return `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>الاسم</th>
+              ${showGroup ? "<th>المجموعة</th>" : ""}
+              <th>رقم الطالب</th>
+              <th>اسم ولي الأمر</th>
+              <th>الحالة المالية (هذا الشهر)</th>
+              <th style="text-align:left">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(s => {
+              const g = state.groups.find(x => x.id === s.groupId);
+              const due = g ? getStudentDue(s, g) : 0;
+              const paid = paidTotal(s.id, t.y, t.m);
+              let fin;
+              if (!g) fin = '<span style="color:var(--text-soft)">—</span>';
+              else if (due === 0 && paid === 0) fin = '<span class="badge success">إعفاء كامل</span>';
+              else if (paid >= due) fin = `<span class="badge success">سدد ${fmtMoney(paid)}</span>`;
+              else if (paid > 0) fin = `<span class="badge warning">جزئي ${fmtMoney(paid)} من ${fmtMoney(due)}</span>`;
+              else fin = `<span class="badge warning">يستحق ${fmtMoney(due)}</span>`;
+              return `
+                <tr>
+                  <td><strong>${escapeHtml(s.name)}</strong></td>
+                  ${showGroup ? `<td>${g ? `<span class="badge primary">${escapeHtml(g.name)}</span>` : '<span class="badge">بدون مجموعة</span>'}</td>` : ""}
+                  <td>${escapeHtml(s.phone) || '<span style="color:var(--text-soft)">—</span>'}</td>
+                  <td>${escapeHtml(s.parentName) || '<span style="color:var(--text-soft)">—</span>'}</td>
+                  <td>${fin}</td>
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn btn-primary btn-sm" data-view-student="${s.id}">عرض التفاصيل</button>
+                      <button class="btn btn-secondary btn-sm" data-edit-student="${s.id}">تعديل</button>
+                      <button class="btn btn-danger btn-sm" data-del-student="${s.id}">حذف</button>
+                    </div>
+                  </td>
+                </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  function studentsResults(list, filterGroup) {
+    const searching = !!(sessionStorage.getItem("student_search") || "").trim();
+    if (list.length === 0) {
+      let title, sub, btn = "";
+      if (state.students.length === 0) { title = "لا يوجد طلاب بعد"; sub = "ابدأ بإضافة طلابك وتعيينهم لمجموعاتهم"; btn = '<div style="margin-top:14px"><button class="btn btn-primary" id="addStudentEmpty">+ إضافة أول طالب</button></div>'; }
+      else if (!searching && filterGroup) { title = filterGroup === "none" ? "كل الطلاب داخل مجموعات" : "لا يوجد طلاب في هذه المجموعة بعد"; sub = filterGroup === "none" ? "" : "أضف أول طالب في المجموعة دي"; btn = filterGroup === "none" ? "" : '<div style="margin-top:14px"><button class="btn btn-primary" id="addStudentEmpty">+ إضافة طالب</button></div>'; }
+      else { title = "لا توجد نتائج"; sub = "جرّب تغيير البحث أو المجموعة"; }
+      return `
+        <div class="card empty">
+          <div class="empty-ico">♛</div>
+          <div class="empty-title">${title}</div>
+          <div class="empty-sub">${sub}</div>
+          ${btn}
+        </div>`;
+    }
+    if (filterGroup) return studentsTable(list, false);
+
+    // "الكل": الطلاب مجمّعون تحت عنوان كل مجموعة
+    const sec = (name, n, body) => `
+      <div class="gp-sec">
+        <div class="gp-sec-head"><span class="gp-sec-name">${name}</span><span class="badge">${n}</span></div>
+        ${body}
+      </div>`;
+    const parts = [];
+    state.groups.forEach(g => {
+      const sub = list.filter(s => s.groupId === g.id);
+      if (sub.length) parts.push(sec(escapeHtml(g.name), sub.length, studentsTable(sub, false)));
     });
+    const loose = list.filter(s => !s.groupId || !state.groups.some(g => g.id === s.groupId));
+    if (loose.length) parts.push(sec("بدون مجموعة", loose.length, studentsTable(loose, false)));
+    return parts.join("");
+  }
+
+  function renderGroups() {
+    if (state.groups.length === 0 && state.students.length === 0) {
+      return `
+        <div class="page-head">
+          <h2>0 مجموعة</h2>
+          <button class="btn btn-primary" id="addGroup">+ مجموعة جديدة</button>
+        </div>
+        <div class="card empty">
+          <div class="empty-ico">▦</div>
+          <div class="empty-title">لا توجد مجموعات بعد</div>
+          <div class="empty-sub">ابدأ بإنشاء مجموعتك الأولى وحدد المواعيد والمبلغ الشهري</div>
+          <div style="margin-top:14px"><button class="btn btn-primary" id="addGroupEmpty">+ إنشاء أول مجموعة</button></div>
+        </div>
+      `;
+    }
+    const { list, filterGroup } = filteredStudents();
+    const g = filterGroup && filterGroup !== "none" ? state.groups.find(x => x.id === filterGroup) : null;
+    return `
+      <div class="gp-layout">
+        <aside class="gp-side">${gpChips(filterGroup)}</aside>
+        <div class="gp-main">
+          ${g ? gpGroupCard(g) : ""}
+          <div class="page-head gp-head">
+            <h2 id="studentsCount">${studentsCountLabel(list)}</h2>
+            <div class="toolbar chips students-bar">
+              <input class="input" id="studentSearch" placeholder="🔍 ابحث بالاسم أو الرقم..." value="${escapeHtml(sessionStorage.getItem("student_search") || "")}" />
+              <button class="btn btn-primary" id="addStudent">+ طالب جديد</button>
+            </div>
+          </div>
+          <div id="studentsResults">${studentsResults(list, filterGroup)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // يرجّع المجموعة المختارة كقيمة جاهزة لنموذج الطالب (undefined = الافتراضي)
+  function currentGroupPreset() {
+    const f = sessionStorage.getItem("filter_group") || "";
+    if (f === "none") return null;
+    return f || undefined;
+  }
+
+  // تحديث النتائج فقط (بدون إعادة رسم الصفحة) عشان مربع البحث ما يفقدش التركيز
+  function updateStudentsResults() {
+    const { list, filterGroup } = filteredStudents();
+    const c = document.getElementById("studentsCount");
+    const r = document.getElementById("studentsResults");
+    if (!c || !r) return;
+    c.textContent = studentsCountLabel(list);
+    r.innerHTML = studentsResults(list, filterGroup);
+    mobileizeTables(r);
+    bindResultsExtras();
+  }
+
+  function bindResultsExtras() {
+    bindStudentRows();
+    const e = document.getElementById("addStudentEmpty");
+    if (e) e.addEventListener("click", () => openStudentForm(null, currentGroupPreset()));
+  }
+
+  function bindGroups() {
+    ["addGroup", "addGroupEmpty", "addGroupChip"].forEach(id => { const b = document.getElementById(id); if (b) b.addEventListener("click", () => openGroupForm()); });
+    const addBtn = document.getElementById("addStudent");
+    if (addBtn) addBtn.addEventListener("click", () => openStudentForm(null, currentGroupPreset()));
+
+    document.querySelectorAll("[data-gp]").forEach(el => el.addEventListener("click", () => {
+      sessionStorage.setItem("filter_group", el.dataset.gp);
+      render();
+    }));
+    const on = document.querySelector(".gp-chip.on");
+    if (on && on.scrollIntoView) { try { on.scrollIntoView({ block: "nearest", inline: "center" }); } catch (x) { /* ignore */ } }
 
     const search = document.getElementById("studentSearch");
     let searchTimer;
@@ -1212,12 +1235,97 @@
       clearTimeout(searchTimer);
       searchTimer = setTimeout(updateStudentsResults, 120);
     });
-    const gf = document.getElementById("groupFilter");
-    if (gf) gf.addEventListener("change", (e) => {
-      sessionStorage.setItem("filter_group", e.target.value);
+
+    document.querySelectorAll("[data-edit-group]").forEach(el => el.addEventListener("click", () => openGroupForm(el.dataset.editGroup)));
+    document.querySelectorAll("[data-del-group]").forEach(el => el.addEventListener("click", () => {
+      const id = el.dataset.delGroup;
+      const g = state.groups.find(x => x.id === id);
+      const cnt = state.students.filter(s => s.groupId === id).length;
+      const examCnt = state.exams.filter(e => e.groupId === id).length;
+      let msg = `حذف "${g.name}"؟`;
+      if (cnt > 0) msg += ` يحتوي على ${cnt} طالب. سيتم إبقاؤهم بدون مجموعة.`;
+      if (examCnt > 0) msg += ` سيتم حذف ${examCnt} امتحان مرتبط بهذه المجموعة وكل الدرجات المسجلة فيها.`;
+      if (!confirm(msg)) return;
+      tx("تم حذف المجموعة", () => {
+        // الطلاب يفضلوا بدون مجموعة، وسجلات الحضور/المدفوعات تفضل محفوظة
+        state.students.filter(s => s.groupId === id).forEach(s => put("students", { ...s, groupId: null }));
+        state.attendance.filter(a => a.groupId === id).forEach(a => put("attendance", { ...a, groupId: null }));
+        state.payments.filter(p => p.groupId === id).forEach(p => put("payments", { ...p, groupId: null }));
+        const examIds = state.exams.filter(e => e.groupId === id).map(e => e.id);
+        state.grades.filter(gr => examIds.includes(gr.examId)).forEach(gr => del("grades", gr.id));
+        examIds.forEach(eid => del("exams", eid));
+        del("groups", id);
+      });
+      sessionStorage.setItem("filter_group", "");
       render();
+    }));
+    bindResultsExtras();
+  }
+
+  // قائمة الإضافة من الزرار العائم في صفحة المجموعات
+  function openGroupsAddSheet() {
+    const g = (() => {
+      const f = sessionStorage.getItem("filter_group") || "";
+      return f && f !== "none" ? state.groups.find(x => x.id === f) : null;
+    })();
+    openModal("إضافة", `
+      <div class="quick-sheet">
+        <button class="btn btn-primary" data-ga="student">♛ طالب جديد${g ? " في " + escapeHtml(g.name) : ""}</button>
+        <button class="btn btn-secondary" data-ga="group">▦ مجموعة جديدة</button>
+      </div>`, (root) => {
+      root.querySelectorAll("[data-ga]").forEach(b => b.addEventListener("click", () => {
+        const q = b.dataset.ga;
+        closeModal();
+        if (q === "student") openStudentForm(null, currentGroupPreset());
+        else openGroupForm();
+      }));
     });
-    bindStudentRows();
+  }
+
+  /* ==========================================================
+     MORE (المزيد): الامتحانات، التقرير الشهري، الإعدادات
+     ========================================================== */
+  function renderMore() {
+    const pref = getThemePref();
+    const ico = {
+      exams: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14.5 3v4.5H19"/><path d="M9 13h6M9 17h6"/></svg>',
+      monthly: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>',
+      settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+      install: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 11l5 5 5-5M4 20h16"/></svg>'
+    };
+    const row = (attrs, key, title, sub) => `
+      <button type="button" class="more-row" ${attrs}>
+        <span class="more-ico">${ico[key]}</span>
+        <span class="more-txt"><span class="more-title">${title}</span><span class="more-sub">${sub}</span></span>
+        <span class="more-chev">‹</span>
+      </button>`;
+    const installBtn = document.getElementById("installBtn");
+    const canInstall = installBtn && !installBtn.hidden;
+    return `
+      <div class="more-list card">
+        ${row('data-more-go="exams"', "exams", "الامتحانات والدرجات", "إنشاء امتحانات وتسجيل الدرجات")}
+        ${row('data-more-go="monthly"', "monthly", "التقرير الشهري", "المدفوعات والغياب لكل الطلاب، مع تصدير Excel / PDF")}
+        ${row('id="moreSettings"', "settings", "الإعدادات المتقدمة", "المزامنة والنسخ الاحتياطي والاستيراد ومسح البيانات")}
+        ${canInstall ? row('id="moreInstall"', "install", "تثبيت التطبيق", "أضف التطبيق للشاشة الرئيسية") : ""}
+      </div>
+      <div class="card card-pad-lg more-theme">
+        <div class="more-theme-title">المظهر</div>
+        <div class="seg" role="group" aria-label="المظهر">
+          <button type="button" class="seg-btn ${pref === "auto" ? "on" : ""}" data-theme-set="auto">تلقائي</button>
+          <button type="button" class="seg-btn ${pref === "light" ? "on" : ""}" data-theme-set="light">فاتح</button>
+          <button type="button" class="seg-btn ${pref === "dark" ? "on" : ""}" data-theme-set="dark">داكن</button>
+        </div>
+      </div>
+      <div class="more-foot">الإصدار 4.0</div>
+    `;
+  }
+  function bindMore() {
+    document.querySelectorAll("[data-more-go]").forEach(el => el.addEventListener("click", () => navigate(el.dataset.moreGo)));
+    const s = document.getElementById("moreSettings");
+    if (s) s.addEventListener("click", () => openAdvancedSettings());
+    const i = document.getElementById("moreInstall");
+    if (i) i.addEventListener("click", () => document.getElementById("installBtn").click());
+    document.querySelectorAll("[data-theme-set]").forEach(el => el.addEventListener("click", () => { setThemePref(el.dataset.themeSet); render(); }));
   }
 
   function openStudentForm(id, presetGroupId) {
@@ -1820,7 +1928,7 @@ function openExamForm(id) {
         <div class="card empty">
           <div class="empty-ico">♛</div>
           <div class="empty-title">الطالب غير موجود</div>
-          <button class="btn btn-primary" style="margin-top:14px" onclick="window.__app.navigate('students')">العودة للطلاب</button>
+          <button class="btn btn-primary" style="margin-top:14px" onclick="window.__app.navigate('groups')">العودة للمجموعات</button>
         </div>
       `;
     }
@@ -1847,7 +1955,7 @@ function openExamForm(id) {
       : "—";
 
     return `
-      <button class="back-btn" data-back-students>← العودة لقائمة الطلاب</button>
+      <button class="back-btn" data-back-students>← العودة للمجموعات</button>
 
       <div class="student-profile">
         <div class="student-avatar">${s.name.charAt(0)}</div>
@@ -2012,7 +2120,7 @@ function openExamForm(id) {
 
   function bindStudentDetail() {
     document.querySelectorAll("[data-back-students]").forEach(el =>
-      el.addEventListener("click", () => navigate("students"))
+      el.addEventListener("click", () => navigate("groups"))
     );
     const editBtn = document.getElementById("studentEditBtn");
     if (editBtn) editBtn.addEventListener("click", () => openStudentForm(sessionStorage.getItem("focus_student")));
@@ -2889,7 +2997,7 @@ function openExamForm(id) {
         closeModal();
         if (q === "attendance") navigate("attendance");
         else if (q === "payment") { navigate("payments"); openPaymentForm(); }
-        else if (q === "student") { navigate("students"); openStudentForm(null); }
+        else if (q === "student") { navigate("groups"); openStudentForm(null, currentGroupPreset()); }
         else if (q === "group") { navigate("groups"); openGroupForm(); }
         else if (q === "exam") { navigate("exams"); if (state.groups.length) openExamForm(); else toast("أنشئ مجموعة أولاً", "danger"); }
       }));
@@ -2902,11 +3010,7 @@ function openExamForm(id) {
     if (!fab) return;
     const actions = {
       dashboard: { ico: "+", label: "إضافة سريعة", fn: openQuickSheet },
-      groups: { ico: "+", label: "مجموعة جديدة", fn: () => openGroupForm() },
-      students: { ico: "+", label: "طالب جديد", fn: () => {
-        const f = sessionStorage.getItem("filter_group") || "";
-        openStudentForm(null, f === "none" ? null : (f || undefined));
-      } },
+      groups: { ico: "+", label: "إضافة طالب أو مجموعة", fn: openGroupsAddSheet },
       attendance: { ico: "✓", label: "تحضير الكل حاضر", fn: () => {
         const b = document.getElementById("attAllPresent");
         if (b && !b.disabled) b.click(); else toast("كل الطلاب مسجَّل لهم حضور بالفعل", "info");
